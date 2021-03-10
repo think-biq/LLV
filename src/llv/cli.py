@@ -129,7 +129,7 @@ def unpack(raw_file, output, retain_raw_frame = True):
             if 0 == frame_index:
                 file.write(f'{{"count": {frame_count}, "frames": [')
 
-            if not retain_raw_frame:
+            if not retain_raw_frame and 'raw_frame' in frame:
                 del frame['raw_frame']
             file.write(json.dumps(frame))
 
