@@ -1,6 +1,11 @@
 # LLV
 
-Live Link VOMiT (Virtual Object Mitigation Tool) enables you to record and play back, [live link](https://docs.unrealengine.com/en-US/Engine/Animation/LiveLinkPlugin/index.html) frames, sent by [Epic Games](https://www.epicgames.com)' [ARKit](https://developer.apple.com/augmented-reality/arkit/) face capture frames, produced by their [iOS app](https://apps.apple.com/us/app/live-link-face/id1495370836).
+Live Link VOMiT (Virtual Object Mitigation Tool) enables you to record and play back [live link](https://docs.unrealengine.com/en-US/Engine/Animation/LiveLinkPlugin/index.html) frames, sent by [Epic Games](https://www.epicgames.com)' [ARKit](https://developer.apple.com/augmented-reality/arkit/) face capture [iOS app](https://apps.apple.com/us/app/live-link-face/id1495370836).
+
+## Quick start
+
+Checkout [this video](https://www.youtube.com/watch?v=RTwibwX4U_s), on how to setup LLV to be used with the MetaHuman example project.
+[![](https://img.youtube.com/vi/RTwibwX4U_s/0.jpg)](http://www.youtube.com/watch?v=RTwibwX4U_s "Click to play on Youtube.com")
 
 ## Usage
 
