@@ -102,7 +102,7 @@ class FaceFrame:
         frame = FaceFrame()
 
         frame._write_uint8(6)
-        frame._write_string('00000000-0000-0000-0000-000000000000')
+        frame._write_string('DEADC0DE-1337-1337-1337-CAFEBABE')
         frame._write_string('LLV')
         sub_frame = frame_number * 0.000614 + 0.121
         frame._write_frametime({"frame_number":1337 + frame_number, "sub_frame":sub_frame, "numerator":60, "denominator":1})
@@ -113,7 +113,7 @@ class FaceFrame:
         shapes = {}
         for name in FaceFrame.FACE_BLENDSHAPE_NAMES:
             shapes[name] = 0.0
-        shapes['JawOpen'] = remap(fract(frame_number / 30), 0, 1, 0, 1)
+        #shapes['JawOpen'] = remap(fract(frame_number / 30), 0, 1, 0, 1)
 
         count = len(shapes)
         frame._write_uint8(count)
