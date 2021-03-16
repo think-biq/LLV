@@ -154,8 +154,18 @@ def pack(clear_file, output, rename = ''):
                 frame_dump = json.dumps(frame)
                 outfile.write(f'{encode_frame(frame_dump)}\n')
 
+def _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes):
+    shape_index = 0
+    for shape_frame_index in range(0, frames_per_shape):
+        frame_index = shape_index*total_number_of_shapes + shape_frame_index
 
-def produce_debug_sequence(output, time_per_shape = 1.1, fps = 60):
+        frame = FaceFrame.from_default(frame_index)
+        frame.blendshapes[shape_name] = remap(shape_frame_index, 0, frames_per_shape-1, -1, 1)
+
+        frame_json = frame.to_json(with_raw_frame = False)
+        file.write(f'{encode_frame(frame_json)}\n')
+
+def produce_debug_sequence(output, time_per_shape = 1.1, fps = 60, single_shape = ''):
     print(f'Requesting debug sequence with {time_per_shape}s per shape @{fps}fps ...')
 
     frames_written = 0
@@ -167,16 +177,12 @@ def produce_debug_sequence(output, time_per_shape = 1.1, fps = 60):
     print(f'Creating {output} with a total of {total_number_of_frames}')
 
     with open(output, 'w', encoding='utf-8', newline='\r\n') as file:
-        for shape_index in range(0, total_number_of_shapes):
-            shape_name = FaceFrame.FACE_BLENDSHAPE_NAMES[shape_index]
-            for shape_frame_index in range(0, frames_per_shape):
-                frame_index = shape_index*total_number_of_shapes + shape_frame_index
-
-                frame = FaceFrame.from_default(frame_index)
-                frame.blendshapes[shape_name] = remap(shape_frame_index, 0, frames_per_shape-1, -1, 1)
-
-                frame_json = frame.to_json(with_raw_frame = False)
-                file.write(f'{encode_frame(frame_json)}\n')
+        if 0 < len(single_shape) and single_shape in FaceFrame.FACE_BLENDSHAPE_NAMES:
+            _write_frames_for_shape(file, single_shape, frames_per_shape, total_number_of_shapes)
+        else:
+            for shape_index in range(0, total_number_of_shapes):
+                shape_name = FaceFrame.FACE_BLENDSHAPE_NAMES[shape_index]
+                _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes)
 
     return frames_written
 
@@ -247,6 +253,9 @@ def create_arg_parser():
     debug_args.add_argument('--time-per-shape', metavar='time_per_shape', type=float
         , help='Time duration for each shape to show its max value.'
         , default=1.0)
+    debug_args.add_argument('--single-shape', metavar='single_shape', type=str
+        , help='Only animates the specific shape in this sequence.'
+        , default='')
 
     return parser
 
@@ -266,7 +275,8 @@ def main():
     elif 'pack' == args.command:
         pack(args.clearfile_path, args.output_path, args.rename)
     elif 'produce_debug_sequence' == args.command:
-        produce_debug_sequence(args.output_path, args.time_per_shape)
+        fps = 60
+        produce_debug_sequence(args.output_path, args.time_per_shape, fps, args.single_shape)
     else:
         parser.print_help()
         sys.exit(1)
