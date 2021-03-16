@@ -12,7 +12,7 @@ import time
 import argparse
 import json
 import base64
-from .gesicht import FaceFrame
+from .gesicht import FaceFrame, remap
 from .buchse import Buchse
 
 
@@ -156,20 +156,28 @@ def pack(clear_file, output, rename = ''):
 
 
 def produce_debug_sequence(output, time_per_shape = 1.1, fps = 60):
+    print(f'Requesting debug sequence with {time_per_shape}s per shape @{fps}fps ...')
+
     frames_written = 0
     frames_per_shape = max(1, round(fps * time_per_shape))
-    print(f'Using {frames_per_shape} frames per shape to display 1.0 ')
 
     total_number_of_shapes = len(FaceFrame.FACE_BLENDSHAPE_NAMES)
     total_number_of_frames = int(total_number_of_shapes * frames_per_shape)
-    for frame_index in range(0, total_number_of_frames):
-        shape_index = int(frame_index % total_number_of_shapes)
-        shape_name = FaceFrame.FACE_BLENDSHAPE_NAMES[shape_index]
 
-        frame = FaceFrame.from_default(frame_index)
-        frame.blendshapes[shape_name] = 1.0
+    print(f'Creating {output} with a total of {total_number_of_frames}')
 
-    print('Not yet implemented :/')
+    with open(output, 'w', encoding='utf-8', newline='\r\n') as file:
+        for shape_index in range(0, total_number_of_shapes):
+            shape_name = FaceFrame.FACE_BLENDSHAPE_NAMES[shape_index]
+            for shape_frame_index in range(0, frames_per_shape):
+                frame_index = shape_index*total_number_of_shapes + shape_frame_index
+
+                frame = FaceFrame.from_default(frame_index)
+                frame.blendshapes[shape_name] = remap(shape_frame_index, 0, frames_per_shape-1, -1, 1)
+
+                frame_json = frame.to_json(with_raw_frame = False)
+                file.write(f'{encode_frame(frame_json)}\n')
+
     return frames_written
 
 
