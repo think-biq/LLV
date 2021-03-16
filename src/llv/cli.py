@@ -157,7 +157,8 @@ def pack(clear_file, output, rename = ''):
 
 def produce_debug_sequence(output, time_per_shape = 1.1, fps = 60):
     frames_written = 0
-    frames_per_shape = min(1, round(fps * time_per_shape))
+    frames_per_shape = max(1, round(fps * time_per_shape))
+    print(f'Using {frames_per_shape} frames per shape to display 1.0 ')
 
     total_number_of_shapes = len(FaceFrame.FACE_BLENDSHAPE_NAMES)
     total_number_of_frames = int(total_number_of_shapes * frames_per_shape)
@@ -231,6 +232,13 @@ def create_arg_parser():
     pack_args.add_argument('--rename', metavar='rename', type=str
         , help='Rename subject name and anonymizes device id.'
         , default='')
+
+    debug_args = subparsers.add_parser('produce_debug_sequence')
+    debug_args.add_argument('output_path', metavar='output_path', type=str
+        , help='Path where unpacked recording is stored.')
+    debug_args.add_argument('--time-per-shape', metavar='time_per_shape', type=float
+        , help='Time duration for each shape to show its max value.'
+        , default=1.0)
 
     return parser
 
