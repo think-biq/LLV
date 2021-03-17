@@ -25,6 +25,7 @@ class FaceFrame:
     """
     Represents a ARKit face frame.
     """
+    VERSION = 6
 
     # Min and Max packet sizes in bytes.
     # See https://github.com/EpicGames/UnrealEngine/blob/2bf1a5b83a7076a0fd275887b373f8ec9e99d431/Engine/Plugins/Runtime/AR/AppleAR/AppleARKitFaceSupport/Source/AppleARKitFaceSupport/Private/AppleARKitLiveLinkSource.cpp#L256
@@ -96,33 +97,21 @@ class FaceFrame:
         "RightEyePitch",
         "RightEyeRoll",
     ]
+    FACE_BLENDSHAPE_COUNT = len(FACE_BLENDSHAPE_NAMES)
+
 
     @staticmethod
     def from_default(frame_number = 0):
         frame = FaceFrame()
 
-        frame._write_uint8(6)
-        frame._write_string('DEADC0DE-1337-1337-1337-CAFEBABE')
-        frame._write_string('LLV Default Device')
         sub_frame = frame_number * 0.000614 + 0.121
-        frame._write_frametime({"frame_number":1337 + frame_number, "sub_frame":sub_frame, "numerator":60, "denominator":1})
-
-        use_test_frame = False
-
-        
-        shapes = {}
+        frame.frame_time = {"frame_number":1337 + frame_number, "sub_frame":sub_frame, "numerator":60, "denominator":1}
+      
         for name in FaceFrame.FACE_BLENDSHAPE_NAMES:
-            shapes[name] = 0.0
-        #shapes['JawOpen'] = remap(fract(frame_number / 30), 0, 1, 0, 1)
+            frame.blendshapes[name] = 0.0
+        frame.blendshape_count = len(frame.blendshapes)
 
-        count = len(shapes)
-        frame._write_uint8(count)
-        for name in shapes:
-            frame._write_float(shapes[name])
-
-        frame.size = len(frame.data)
-
-        frame._deserialize()
+        frame._serialize()
 
         return frame
 
@@ -131,31 +120,22 @@ class FaceFrame:
     def from_json(frame_json):
         frame = FaceFrame()
 
-        frame._write_uint8(frame_json['version'])
-        frame._write_string(frame_json['device_id'])
-        frame._write_string(frame_json['subject_name'])
-        frame._write_frametime(frame_json['frame_time'])
+        frame.version = frame_json['version']
+        frame.device_id = frame_json['device_id']
+        frame.subject_name = frame_json['subject_name']
+        frame.frame_time = frame_json['frame_time']
 
-        count = frame_json['blendshape_count']
-        frame._write_uint8(count)
-        for blendshape_name in frame_json['blendshapes']:
-            frame._write_float(frame_json['blendshapes'][blendshape_name])
+        frame.blendshape_count = frame_json['blendshape_count']
+        frame.blendshapes = frame_json['blendshapes']
 
-        frame.size = len(frame.data)
-
-        frame._deserialize()
+        frame._serialize()
 
         return frame
 
 
     @staticmethod
     def from_raw(data, data_size):
-        if data_size < FaceFrame.PACKET_MIN_SIZE:
-            raise Exception(f"Trying to read frame ({data_size}) smaller than min size! ({FaceFrame.PACKET_MIN_SIZE})")
-        if FaceFrame.PACKET_MAX_SIZE < data_size:
-            raise Exception(f"Trying to read frame bigger than {FaceFrame.PACKET_MAX_SIZE} bytes!")
 
-        #
         frame = FaceFrame()
         frame.data = data
         frame.size = data_size
@@ -171,7 +151,7 @@ class FaceFrame:
         self.size = 0
         self.current_position = 0
 
-        self.version = 6
+        self.version = FaceFrame.VERSION
         self.device_id = 'DEADC0DE-1337-1337-1337-CAFEBABE'
         self.subject_name = 'LLV Default Device'
         self.frame_time = {"frame_number":0, "sub_frame":0, "numerator":0, "denominator":0}
@@ -180,14 +160,21 @@ class FaceFrame:
         self.blendshapes = {}
 
 
+    def _check_size(self):
+        if FaceFrame.PACKET_MIN_SIZE > self.size:
+            raise Exception(f"Trying to read frame (size: {self.size}) smaller than min size of {FaceFrame.PACKET_MIN_SIZE} bytes!")
+        if FaceFrame.PACKET_MAX_SIZE < self.size:
+            raise Exception(f"Trying to read frame (size: {self.size}) bigger than max size of {FaceFrame.PACKET_MAX_SIZE} bytes!")
+
+
     def _deserialize(self):
-        # Read frame meta data.
+        self._check_size()
+
         self.version = self._read_uint8()
         self.device_id = self._read_string()
         self.subject_name = self._read_string()
         self.frame_time = self._read_frametime()
 
-        #
         self.blendshape_count = self._read_uint8()
         for blendshape_index in range(0, self.blendshape_count):
             blendshape_name = FaceFrame.FACE_BLENDSHAPE_NAMES[blendshape_index]
@@ -198,6 +185,37 @@ class FaceFrame:
             print(f'Left over data after serialization! {self.current_position}/{self.size} => ({self.data[self.current_position:]})')
             self.data = self.data[:-unused_padding]
             self.size = len(self.data)
+
+        return self
+
+
+    def _serialize(self):
+        self.data = b''
+        self.size = 0
+
+        self._write_uint8(self.version)
+        self._write_string(self.device_id)
+        self._write_string(self.subject_name)
+        self._write_frametime(self.frame_time)
+
+        count = self.blendshape_count
+        self._write_uint8(count)
+        for blendshape_name in self.blendshapes:
+            self._write_float(self.blendshapes[blendshape_name])
+
+        self.size = len(self.data)
+
+        self._check_size()
+
+
+    def encode(self):
+        self._serialize()
+        
+        frame_packet = b''
+        frame_packet += struct.pack('>L', self.size)
+        frame_packet += self.data
+
+        return frame_packet
 
 
     def equals(self, other):
