@@ -167,6 +167,35 @@ def pack(clear_file, output, rename = ''):
                 frame = FaceFrame.from_json(frame_json)
                 outfile.write(frame.encode())
 
+def migrate(legacy_file, output, rename = ''):
+    with open(output, 'wb') as outfile:
+        outfile.write(struct.pack('>B', FaceFrame.VERSION)) # version of the binary protocol
+
+        line_count = 0
+        with open(legacy_file, 'r', encoding='utf-8', newline='\r\n') as infile:
+            for _ in infile.readlines():
+                line_count += 1
+
+            outfile.write(struct.pack('>L', line_count)) # how many frames are in the recording?
+
+        print(f'Processing {line_count} legacy frames ...')
+
+        with open(legacy_file, 'r', encoding='utf-8', newline='\r\n') as infile:
+            line_index = 0
+            for l in infile.readlines():
+                line_index += 1
+
+                decoded_line = base64.b64decode(l)
+                decoded_line_string = decoded_line.decode('utf8')
+                frame_json = json.loads(decoded_line_string)
+
+                if 0 < len(rename):
+                    frame_json['subject_name'] = rename
+                    frame_json['device_id'] = 'DEADC0DE-1337-1337-1337-CAFEBABE'
+
+                frame = FaceFrame.from_json(frame_json)
+                outfile.write(frame.encode())
+
 
 def _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes, min_value = -1.0, max_value = 1.0):
     shape_index = 0
@@ -264,6 +293,16 @@ def create_arg_parser():
         , help='Rename subject name and anonymizes device id.'
         , default='')
 
+    # Setup pack command and options.
+    migrate_args = subparsers.add_parser('migrate')
+    migrate_args.add_argument('legacy_file', metavar='in_file', type=str
+        , help='Path to a recording clearfile.')
+    migrate_args.add_argument('output_path', metavar='out_file', type=str
+        , help='Path where unpacked recording is stored.')
+    migrate_args.add_argument('--rename', metavar='n', type=str
+        , help='Rename subject name and anonymizes device id.'
+        , default='')
+
     debug_args = subparsers.add_parser('sequence')
     debug_args.add_argument('output_path', metavar='out_file', type=str
         , help='Path where unpacked recording is stored.')
@@ -297,6 +336,8 @@ def main():
         unpack(args.recording_path, args.output_path, args.retain, args.rename)
     elif 'pack' == args.command:
         pack(args.clearfile_path, args.output_path, args.rename)
+    elif 'migrate' == args.command:
+        migrate(args.legacy_file, args.output_path, args.rename)
     elif 'sequence' == args.command:
         fps = 60
         sequence(args.output_path, args.time_per_shape, fps, args.single_shape, args.min, args.max)
