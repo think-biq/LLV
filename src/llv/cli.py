@@ -154,18 +154,18 @@ def pack(clear_file, output, rename = ''):
                 frame_dump = json.dumps(frame)
                 outfile.write(f'{encode_frame(frame_dump)}\n')
 
-def _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes):
+def _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes, min_value = -1.0, max_value = 1.0):
     shape_index = 0
     for shape_frame_index in range(0, frames_per_shape):
         frame_index = shape_index*total_number_of_shapes + shape_frame_index
 
         frame = FaceFrame.from_default(frame_index)
-        frame.blendshapes[shape_name] = remap(shape_frame_index, 0, frames_per_shape-1, -1, 1)
+        frame.blendshapes[shape_name] = remap(shape_frame_index, 0, frames_per_shape-1, min_value, max_value)
 
         frame_json = frame.to_json(with_raw_frame = False)
         file.write(f'{encode_frame(frame_json)}\n')
 
-def produce_debug_sequence(output, time_per_shape = 1.1, fps = 60, single_shape = ''):
+def sequence(output, time_per_shape = 1.1, fps = 60, single_shape = '', min_value = -1.0, max_value = 1.0):
     print(f'Requesting debug sequence with {time_per_shape}s per shape @{fps}fps ...')
 
     frames_written = 0
@@ -178,11 +178,11 @@ def produce_debug_sequence(output, time_per_shape = 1.1, fps = 60, single_shape 
 
     with open(output, 'w', encoding='utf-8', newline='\r\n') as file:
         if 0 < len(single_shape) and single_shape in FaceFrame.FACE_BLENDSHAPE_NAMES:
-            _write_frames_for_shape(file, single_shape, frames_per_shape, total_number_of_shapes)
+            _write_frames_for_shape(file, single_shape, frames_per_shape, total_number_of_shapes, min_value, max_value)
         else:
             for shape_index in range(0, total_number_of_shapes):
                 shape_name = FaceFrame.FACE_BLENDSHAPE_NAMES[shape_index]
-                _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes)
+                _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes, min_value, max_value)
 
     return frames_written
 
@@ -193,69 +193,76 @@ def create_arg_parser():
 
     # Setup record command and options.
     record_args = subparsers.add_parser('record')
-    record_args.add_argument('--host', metavar='host', type=str
+    record_args.add_argument('--host', metavar='h', type=str
         , help='Host address to bind (0.0.0.0 by default).'
         , default='')
-    record_args.add_argument('--port', metavar='port', type=int
+    record_args.add_argument('--port', metavar='p', type=int
         , help='Port to host server on.'
         , default=11111)
-    record_args.add_argument('--frames', metavar='frames', type=float
+    record_args.add_argument('--frames', metavar='f', type=float
         , help='Frame count to record.'
         , default=300)
     record_args.add_argument('--with-raw'
         , action='store_true'
+        , help='Flag to configure if recording should retain raw binary network frame. (false by default)'
         , default=False)
-    record_args.add_argument('--output', metavar='output', type=str
+    record_args.add_argument('--output', metavar='o', type=str
         , help='Path where recording is stored.'
         , default=f'./recording-{time.strftime("%Y-%m-%d-%H-%M-%S")}.gesichter')
 
     # Setup play command and options.
     play_args = subparsers.add_parser('play')
-    play_args.add_argument('recording_path', metavar='recording_path', type=str
+    play_args.add_argument('recording_path', metavar='in_path', type=str
         , help='Path to recording file.')
-    play_args.add_argument('--fps', metavar='fps', type=float
+    play_args.add_argument('--fps', metavar='f', type=float
         , help='Playback speed for animation frames.'
         , default=60)
-    play_args.add_argument('--host', metavar='host', type=str
+    play_args.add_argument('--host', metavar='h', type=str
         , help='Target host to send data to.'
         , default='localhost')
-    play_args.add_argument('--port', metavar='port', type=int
+    play_args.add_argument('--port', metavar='p', type=int
         , help='Port to target.'
         , default=11111)
 
     # Setup unpack command and options.
     unpack_args = subparsers.add_parser('unpack')
-    unpack_args.add_argument('recording_path', metavar='recording_path', type=str
+    unpack_args.add_argument('recording_path', metavar='in_path', type=str
         , help='Path to a raw recording file.')
-    unpack_args.add_argument('output_path', metavar='output_path', type=str
+    unpack_args.add_argument('output_path', metavar='out_path', type=str
         , help='Path where unpacked recording is stored.')
     unpack_args.add_argument('--retain'
-        , help='Retains original raw frame data.'
+        , help='Retains original raw frame data. (false by default)'
         , action='store_true'
         , default=False)
-    unpack_args.add_argument('--rename', metavar='rename', type=str
+    unpack_args.add_argument('--rename', metavar='n', type=str
         , help='Rename subject name and anonymizes device id.'
         , default='')
 
     # Setup pack command and options.
     pack_args = subparsers.add_parser('pack')
-    pack_args.add_argument('clearfile_path', metavar='clearfile_path', type=str
+    pack_args.add_argument('clearfile_path', metavar='in_file', type=str
         , help='Path to a recording clearfile.')
-    pack_args.add_argument('output_path', metavar='output_path', type=str
+    pack_args.add_argument('output_path', metavar='out_file', type=str
         , help='Path where unpacked recording is stored.')
-    pack_args.add_argument('--rename', metavar='rename', type=str
+    pack_args.add_argument('--rename', metavar='n', type=str
         , help='Rename subject name and anonymizes device id.'
         , default='')
 
-    debug_args = subparsers.add_parser('produce_debug_sequence')
-    debug_args.add_argument('output_path', metavar='output_path', type=str
+    debug_args = subparsers.add_parser('sequence')
+    debug_args.add_argument('output_path', metavar='out_file', type=str
         , help='Path where unpacked recording is stored.')
-    debug_args.add_argument('--time-per-shape', metavar='time_per_shape', type=float
+    debug_args.add_argument('--time-per-shape', metavar='t', type=float
         , help='Time duration for each shape to show its max value.'
         , default=1.0)
-    debug_args.add_argument('--single-shape', metavar='single_shape', type=str
+    debug_args.add_argument('--single-shape', metavar='s', type=str
         , help='Only animates the specific shape in this sequence.'
-        , default='')
+        , default='')    
+    debug_args.add_argument('--min', metavar='v', type=float
+        , help='Minimum value for the shape to assume when animating.'
+        , default=-1.0)
+    debug_args.add_argument('--max', metavar='v', type=float
+        , help='Maximum value for the shape to assume when animating.'
+        , default=1.0)
 
     return parser
 
@@ -274,9 +281,9 @@ def main():
         unpack(args.recording_path, args.output_path, args.retain, args.rename)
     elif 'pack' == args.command:
         pack(args.clearfile_path, args.output_path, args.rename)
-    elif 'produce_debug_sequence' == args.command:
+    elif 'sequence' == args.command:
         fps = 60
-        produce_debug_sequence(args.output_path, args.time_per_shape, fps, args.single_shape)
+        sequence(args.output_path, args.time_per_shape, fps, args.single_shape, args.min, args.max)
     else:
         parser.print_help()
         sys.exit(1)

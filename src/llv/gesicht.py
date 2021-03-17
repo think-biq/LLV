@@ -103,7 +103,7 @@ class FaceFrame:
 
         frame._write_uint8(6)
         frame._write_string('DEADC0DE-1337-1337-1337-CAFEBABE')
-        frame._write_string('LLV')
+        frame._write_string('LLV Default Device')
         sub_frame = frame_number * 0.000614 + 0.121
         frame._write_frametime({"frame_number":1337 + frame_number, "sub_frame":sub_frame, "numerator":60, "denominator":1})
 
@@ -172,8 +172,8 @@ class FaceFrame:
         self.current_position = 0
 
         self.version = 6
-        self.device_id = 'None'
-        self.subject_name = 'None'
+        self.device_id = 'DEADC0DE-1337-1337-1337-CAFEBABE'
+        self.subject_name = 'LLV Default Device'
         self.frame_time = {"frame_number":0, "sub_frame":0, "numerator":0, "denominator":0}
 
         self.blendshape_count = 0
