@@ -1,6 +1,9 @@
 #
 .DS_Store
 __pycache__
+bin/
+lib/
+pyvenv.cfg
 
 #
 *.gesichter
