@@ -16,20 +16,10 @@ from .gesicht import FaceFrame, remap
 from .buchse import Buchse
 import struct
 import os
+import gzip
 
 def clamp(value, min_value, max_value):
    return max(min(value, max_value), min_value)
-
-
-def decode_raw_frame(frame_json):
-    # raw_frame = base64.b64decode(frame_json['raw_frame']['data'].encode('utf8'))
-    # raw_frame_size = frame_json['raw_frame']['size']
-    frame = FaceFrame.from_json(frame_json)
-    return frame
-
-
-def encode_frame(frame_json):
-    return base64.b64encode(frame_json.encode("utf8")).decode("utf8")
 
 
 def read_frames(filepath, loop = False):
@@ -37,7 +27,7 @@ def read_frames(filepath, loop = False):
 
     keep_reading = True
     while keep_reading:
-        with open(filepath, 'rb') as file:
+        with gzip.open(filepath, 'rb') as file:
             file.seek(0, 0)
 
             version, = struct.unpack('>B', file.read(1))
@@ -47,10 +37,6 @@ def read_frames(filepath, loop = False):
 
             for frame_index in range(0, frame_count):
                 raw_frame_size = file.read(4)
-                raw_frame_size_size = len(raw_frame_size)
-                if not raw_frame_size or raw_frame_size_size < 4:
-                    t = file.tell()
-                    raise Exception(f'Why you not valid? {raw_frame_size} @ index {frame_index} and cursor {t}/{file_size}')
                 frame_size, = struct.unpack('>L', raw_frame_size)
                 frame_data = file.read(frame_size)
 
@@ -95,8 +81,8 @@ def record(host, port, frames, output, with_raw_frame = False):
 
     print(f'Waiting for {frames} frames to write ...')
 
-    with open(output, 'wb') as file:
-        file.write(struct.pack('>B'), FaceFrame.VERSION) # version of the binary protocol
+    with gzip.open(output, 'wb') as file:
+        file.write(struct.pack('>B', FaceFrame.VERSION)) # version of the binary protocol
         file.write(struct.pack('>L', frames)) # how many frames are in the recording?
 
         current_data_frame = 0
@@ -120,7 +106,7 @@ def record(host, port, frames, output, with_raw_frame = False):
                 continue
 
             print(f'Processing frame {current_data_frame+1} ({frame.frame_time["frame_number"]}) ...')
-            #frame_json = frame.to_json(with_raw_frame = with_raw_frame)
+
             frame_packet = frame.encode()
             file.write(frame_packet)
 
@@ -152,23 +138,25 @@ def unpack(raw_file, output, retain_raw_frame = True, rename = ''):
 
 
 def pack(clear_file, output, rename = ''):
-    with open(output, 'wb') as outfile:
+    with gzip.open(output, 'wb') as outfile:
         outfile.write(struct.pack('>B', FaceFrame.VERSION)) # version of the binary protocol
 
         recording_json = None
         with open(clear_file, 'r', encoding='utf-8', newline='\r\n') as infile:
             recording_json = json.load(infile)
-            outfile.write(struct.pack('>L', recording_json['count'])) # how many frames are in the recording?
 
-            for frame_json in recording_json['frames']:
-                if 0 < len(rename):
-                    frame_json['subject_name'] = rename
-                    frame_json['device_id'] = 'DEADC0DE-1337-1337-1337-CAFEBABE'
-                frame = FaceFrame.from_json(frame_json)
-                outfile.write(frame.encode())
+        outfile.write(struct.pack('>L', recording_json['count'])) # how many frames are in the recording?
+
+        for frame_json in recording_json['frames']:
+            if 0 < len(rename):
+                frame_json['subject_name'] = rename
+                frame_json['device_id'] = 'DEADC0DE-1337-1337-1337-CAFEBABE'
+            frame = FaceFrame.from_json(frame_json)
+            outfile.write(frame.encode())
+
 
 def migrate(legacy_file, output, rename = ''):
-    with open(output, 'wb') as outfile:
+    with gzip.open(output, 'wb') as outfile:
         outfile.write(struct.pack('>B', FaceFrame.VERSION)) # version of the binary protocol
 
         line_count = 0
@@ -197,6 +185,7 @@ def migrate(legacy_file, output, rename = ''):
                 outfile.write(frame.encode())
 
 
+
 def _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes, min_value = -1.0, max_value = 1.0):
     shape_index = 0
     for shape_frame_index in range(0, frames_per_shape):
@@ -218,13 +207,17 @@ def sequence(output, time_per_shape = 1.1, fps = 60, single_shape = '', min_valu
 
     print(f'Creating {output} with a total of {total_number_of_frames}')
 
-    with open(output, 'wb') as file:
+    with gzip.open(output, 'wb') as file:
         file.write(struct.pack('>B', FaceFrame.VERSION)) # version of the binary protocol
         file.write(struct.pack('>L', total_number_of_frames)) # how many frames are in the recording?
 
-        if 0 < len(single_shape) and single_shape in FaceFrame.FACE_BLENDSHAPE_NAMES:
+        if 0 < len(single_shape):
+            print(f'Preparing animtion of a single shape ({single_shape}) ...')
+            if not single_shape in FaceFrame.FACE_BLENDSHAPE_NAMES:
+                raise Exception(f'Could not find {single_shape} in shape blendshape defintion!')
             _write_frames_for_shape(file, single_shape, frames_per_shape, total_number_of_shapes, min_value, max_value)
         else:
+            print(f'Preparing sequence of all available shapes ...')
             for shape_index in range(0, total_number_of_shapes):
                 shape_name = FaceFrame.FACE_BLENDSHAPE_NAMES[shape_index]
                 _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes, min_value, max_value)
@@ -244,7 +237,7 @@ def create_arg_parser():
     record_args.add_argument('--port', metavar='p', type=int
         , help='Port to host server on.'
         , default=11111)
-    record_args.add_argument('--frames', metavar='f', type=float
+    record_args.add_argument('--frames', metavar='f', type=int
         , help='Frame count to record.'
         , default=300)
     record_args.add_argument('--with-raw'
