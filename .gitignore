@@ -6,4 +6,10 @@ lib/
 pyvenv.cfg
 
 #
+raw/
+dist/
+llv.egg-info/
+testdata/
+
+#
 *.gesichter
