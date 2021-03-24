@@ -101,7 +101,7 @@ class FaceFrame:
 
 
     @staticmethod
-    def from_default(frame_number = 0):
+    def from_default(frame_number = 0, fps = 60):
         frame = FaceFrame()
 
         sub_frame = frame_number * 0.000614 + 0.121
@@ -170,6 +170,8 @@ class FaceFrame:
     def _deserialize(self):
         self._check_size()
 
+        self.current_position = 0
+
         self.version = self._read_uint8()
         self.device_id = self._read_string()
         self.subject_name = self._read_string()
@@ -192,6 +194,7 @@ class FaceFrame:
     def _serialize(self):
         self.data = b''
         self.size = 0
+        self.current_position = 0
 
         self._write_uint8(self.version)
         self._write_string(self.device_id)
