@@ -8,11 +8,10 @@
 """
 
 import setuptools
+from src.llv import version
 
 with open("readme.md", "r") as fh:
     long_description = fh.read()
-
-from src.llv import version
 
 setuptools.setup(
     name="llv",
@@ -23,14 +22,15 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://gitlab.com/think-biq/LiveLinkVomit",
-    packages=setuptools.find_packages(),
+    package_dir = {'llv': 'src/llv'},
+    packages=['llv'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.9',
     entry_points={
-        'console_scripts': ['llv = src.llv.cli:main'],
+        'console_scripts': ['llv = llv.cli:main'],
     }
 )
