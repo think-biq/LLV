@@ -1,5 +1,5 @@
 """    
-    setuptools script to install / build LLV (Live Link VOMiT).
+    setuptools script to install / build LLV.
 
     2021-∞ (c) blurryroots innovation qanat OÜ. All rights reserved.
     See license.md for details.
@@ -21,7 +21,7 @@ setuptools.setup(
     description="CLI tool for recording or replaying Epic Games' live link face capture frames.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://gitlab.com/think-biq/LiveLinkVomit",
+    url="https://gitlab.com/think-biq/LLV",
     package_dir = {'llv': 'src/llv'},
     packages=['llv'],
     classifiers=[
