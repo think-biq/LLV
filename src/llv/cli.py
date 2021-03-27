@@ -61,6 +61,7 @@ def _read_frames_json(filepath):
 
 
 def _read_frames_binary(filepath):
+    file_size = os.path.getsize(filepath)
     with gzip.open(filepath, 'rb') as file:
         version, = struct.unpack('>B', file.read(1))
         if version != FaceFrame.VERSION:
@@ -74,23 +75,24 @@ def _read_frames_binary(filepath):
 
             yield frame_data, frame_index, frame_count, version
 
+        file_pos = file.tell()
+        if file_pos < file_size:
+            raise Exception(f'Recording seems corrupted! Data after last frame! {file_pos}/{file_size}')
 
-def read_frames(filepath, is_binary = True, loop = False):
-    file_size = os.path.getsize(filepath)
 
-    if is_binary:
-        frame_generator = _read_frames_binary(filepath)
-    else:
-        frame_generator = _read_frames_json(filepath)
-
+def read_frames(filepath, loop = False):
+    is_binary = is_binary_file(filepath)
     keep_reading = True
     while keep_reading:
+        if is_binary:
+            frame_generator = _read_frames_binary(filepath)
+        else:
+            frame_generator = _read_frames_json(filepath)
         
         for frame_package in frame_generator:
             yield frame_package
 
-        if not loop:
-            keep_reading = False
+        keep_reading = loop
 
 
 def playback(host, port, filepath, fps, loop = True):
@@ -103,7 +105,7 @@ def playback(host, port, filepath, fps, loop = True):
 
     frame_index = -1
     frame_count = -1
-    for frame_package in read_frames(filepath, loop):
+    for frame_package in read_frames(filepath, loop=loop):
         frame_data, frame_index, frame_count, version = frame_package
         if 0 == frame_index:
             print(f'Start sending {frame_count} frames of version {version} @{fps}fps ...')
@@ -235,7 +237,6 @@ def migrate(legacy_file, output, rename = ''):
                 outfile.write(frame.encode())
 
 
-
 def _write_frames_for_shape(file, shape_name, frames_per_shape, total_number_of_shapes, min_value = -1.0, max_value = 1.0):
     shape_index = 0
     for shape_frame_index in range(0, frames_per_shape):
@@ -290,6 +291,7 @@ def apply_modifiers(recording_filepath, modifiers_filepath, default_value = 1.0)
     for frame_data, frame_index, frame_count, version \
         in read_frames(recording_filepath, is_binary = is_binary_recording, loop = False):
         raise Exception('Not implemented yet!')
+
 
 def create_remap_library(csv_filepath, library_filepath, dialect = 'excel'):
     mapping = {}
@@ -398,7 +400,6 @@ def fbx_meta(fbx_meta_filepath, library_filepath, output_path):
 
         file.write(']}')
         
-
 
 def create_arg_parser():
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
