@@ -2,6 +2,10 @@
 
 LLV enables you to record and play back [live link](https://docs.unrealengine.com/en-US/Engine/Animation/LiveLinkPlugin/index.html) frames, sent by [Epic Games](https://www.epicgames.com)' [ARKit](https://developer.apple.com/augmented-reality/arkit/) face capture [iOS app](https://apps.apple.com/us/app/live-link-face/id1495370836).
 
+## Feature requests
+
+If you appreciate LLV and like me to adjust it for tooling within your project pipeline, please reach out via *llv(at)think-biq.com* to discuss options. I'd love to add you as official sponsor.
+
 ## Issues and discussion
 
 Checkout [the wiki](https://github.com/think-biq/LLV/wiki) for more information on creating issues.
